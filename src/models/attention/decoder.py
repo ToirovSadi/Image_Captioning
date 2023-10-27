@@ -82,7 +82,7 @@ class MultipleAttention(nn.Module):
         return out
 
         
-class Attention(nn.Module):
+class AttentionBlock(nn.Module):
     """
         Attention Block
     """
@@ -110,8 +110,8 @@ class Decoder(nn.Module):
         self.output_dim = output_dim
         self.vocab = vocab
         self.hidden_dim = hidden_dim
-        self.self_blocks = nn.Sequential(*[Attention(embed_dim, n_head, batch_size, mask=True) for _ in range(n_layer)])
-        self.cros_blocks = nn.Sequential(*[Attention(embed_dim, n_head, batch_size) for _ in range(n_layer)])
+        self.self_blocks = nn.Sequential(*[AttentionBlock(embed_dim, n_head, batch_size, mask=True) for _ in range(n_layer)])
+        self.cros_blocks = nn.Sequential(*[AttentionBlock(embed_dim, n_head, batch_size) for _ in range(n_layer)])
         self.fc_out = nn.Linear(embed_dim, output_dim)
         self.dropout = nn.Dropout(dropout)
         
