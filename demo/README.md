@@ -1,0 +1,1 @@
+# Images taken from Telegram of the Innopolis University channel
