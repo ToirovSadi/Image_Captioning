@@ -10,8 +10,8 @@ LR = 1e-3
 LABEL_SMOOTHING = 0
 WEIGHT_DECAY = 0
 
-MODEL_RESUME = './transformer/logs/2023-11-23_13-19-38/epoch=19-step=43700.ckpt'
-PREPTRAIN_PATH = './transformer/logs/2023-11-23_13-19-38/epoch=19-step=43700.ckpt'
+MODEL_RESUME = './transformer/logs/2023-11-24_04-07-11/epoch=3-step=12712.ckpt'
+PREPTRAIN_PATH = './transformer/logs/2023-11-24_04-07-11/epoch=3-step=12712.ckpt'
 LOGS_DIR = "./transformer/logs/"
 
 ## Model Hyperparameters

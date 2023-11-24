@@ -1,7 +1,27 @@
 import gdown
 import torch
+import warnings
+warnings.filterwarnings("ignore")
 
-from transformer.predict_model import predict
+model_names = {
+    'transformer': 'models/transformer.ckpt',
+    'transformer_small': 'models/transformer_small.ckpt',
+    'seq2seq': 'models/seq2seq.ckpt',
+}
+
+def get_predict_fn(args):
+    model_name = args.model_name
+    if model_name not in model_names:
+        raise ValueError(f"Incorrect model name, available one {list(model_names.keys())}")
+    
+    if model_name == 'transformer' or model_name == 'transformer_small':
+        from transformer.predict_model import predict
+        return predict, model_names[model_name]
+    if model_name == 'seq2seq':
+        from seq2seq.predict_model import predict
+        return predict, model_names[model_name]
+    
+    raise RuntimeError("model name not found!")
 
 import argparse
 if __name__ == '__main__':
@@ -12,9 +32,12 @@ if __name__ == '__main__':
     p.add_argument('--max_steps', type=int, default=2000)
     args = p.parse_args()
     
-    ckpt_path = 'transformer/logs/2023-11-23_13-19-38/epoch=29-step=49665.ckpt'
+    predict_fn, ckpt_path = get_predict_fn(args)
     
-    captions = predict(ckpt_path, args.image_path, num_candidates=args.num_captions, max_steps=args.max_steps)
+    captions = predict_fn(ckpt_path, args.image_path, num_candidates=args.num_captions, max_steps=args.max_steps)
+    
+    if type(captions) is not list:
+        captions = [captions]
     
     if len(captions) == 1:
         print("caption:", captions[0])
@@ -22,23 +45,3 @@ if __name__ == '__main__':
         print("captions:")
         for i, caption in enumerate(captions):
             print(f"{i}) {caption}")
-    
-#     model_name = args.model_name
-#     if model_name is None:
-#         choose_model_name()
-#     get_model()
-    
-#     print(f"You have {num_predictions} number of predictions per program run, you can write your sentence in console and get answer from the model")
-#     for _ in range(num_predictions):
-#         toxic_sent = input("Your sentence: ")
-#         try:
-            
-#             # in later versions this `use_encoder_out` will be removed so
-#             # you can ignore it
-#             if model_name.startwith('attention'):
-#                 print(model.predict(toxic_sent, use_encoder_out=True))
-#             else:
-#                 print(model.predict(toxic_sent))
-#         except Exception as e:
-#             print("ERROR occured while trying to predict, msg:", e)
-    

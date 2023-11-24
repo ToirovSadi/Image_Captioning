@@ -9,6 +9,7 @@ import lightning as L
 
 from . import config
 from .utils import remove_specials
+from .utils import beam_search
 
 class Encoder(nn.Module):
     def __init__(self, input_channels, hidden_dim, dropout=0.3):
@@ -233,8 +234,9 @@ class Transformer(L.LightningModule):
             preds.view(-1, output_dim),
             caption[:, 1:].reshape(-1),
         )
+        preds = self.predict_step(img, batch_idx)
         
-        self.all_validation.append((preds.argmax(-1), all_captions))
+        self.all_validation.append((preds, all_captions))
         self.log("val_loss", loss)
         return loss
     
@@ -242,14 +244,9 @@ class Transformer(L.LightningModule):
         candidate_corpus = []
         references_corpus = []
         vocab = self.decoder.vocab
-        for preds, all_captions in self.all_validation:
-            for i in range(preds.size(0)):
-                pred = preds[i].cpu().numpy()
-                pred_token = vocab.lookup_tokens(pred)
-                if '<eos>' in pred_token:
-                    pred_token = pred_token[:pred_token.index('<eos>')]
-                pred_token = remove_specials(pred_token)
-                candidate_corpus.append(pred_token)
+        for pred, all_captions in self.all_validation:
+            for i in range(len(pred)):
+                candidate_corpus.append(pred[i])
                 
                 all_caption = [remove_specials(cap) for cap in all_captions[i]]
                 references_corpus.append(all_caption)
@@ -262,6 +259,36 @@ class Transformer(L.LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=config.LR, weight_decay=config.WEIGHT_DECAY)
         return optimizer
     
+    # predict using beam search
+    def predict(self, img):
+        if len(img.shape) == 3:
+            img = img.unsqueeze(0)
+        return beam_search(img, self, vocab=self.decoder.vocab)[0]
+    
+    def predict_step(self, batch, batch_idx):
+        self.eval()
+        res = []
+        vocab = self.decoder.vocab
+        with torch.no_grad():
+            for i in range(len(batch)):
+                image = batch[i]
+                image = image.unsqueeze(0)
+                ans = [vocab['<sos>']]
+                eos_idx = vocab['<eos>']
+
+                enc_outputs = self.encoder(image)
+                hidden = enc_outputs.unsqueeze(0)
+                for t in range(self.max_sent_size):
+                    dec_input = torch.LongTensor(ans).to(self.device).unsqueeze(0)
+                    preds = self.decoder(dec_input, enc_outputs) # (1, t, vocab_size)
+                    preds = preds[:, -1, :].argmax(-1)
+                    if preds.item() == eos_idx:
+                        break
+                    ans.append(preds.cpu().item())
+
+                res.append(vocab.lookup_tokens(ans[1:]))
+
+        return res
     
 #     def predict(self, image, transform_image):
 #         self.eval()

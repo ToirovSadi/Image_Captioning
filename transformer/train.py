@@ -9,8 +9,8 @@ import os
 os.chdir("..") # go to root dir
 
 import config
-from data import COCODataset
-from data import collate_batch
+from dataset import COCODataset
+from dataset import collate_batch
 from model import Transformer
 from utils import generate_ckpt_name
 
@@ -39,8 +39,12 @@ train_dataset = COCODataset(
     train=True,
     image_transform=train_transform,
     remove_idx=True,
-    vocab_min_freq=5,
 )
+train_dataset.build_vocab(
+    min_freq=5,
+    load_from_file=True,
+)
+
 print("Train Dataset Size: ", len(train_dataset))
 print("Vocab Size:", len(train_dataset.vocab))
 
@@ -94,23 +98,11 @@ if config.PREPTRAIN_PATH is None:
     )
 else:
     print("loading model from checkpoint")
-    model = Transformer.load_from_checkpoint(
-        config.PREPTRAIN_PATH,
-        input_dim=config.input_dim,
-        embed_dim=config.embed_dim,
-        hidden_dim=config.hidden_dim,
-        output_dim=config.output_dim,
-        num_heads=config.num_heads,
-        num_layer=config.num_layer,
-        vocab=train_dataset.vocab,
-        dropout=config.dropout,
-        max_length=config.MAX_SENT_SIZE,
-        device=device,
-    )
+    model = Transformer.load_from_checkpoint(config.PREPTRAIN_PATH)
 
-    
-# new_dir = generate_ckpt_name()
-new_dir = '2023-11-23_13-19-38' #don't create new dir
+
+new_dir = generate_ckpt_name()
+new_dir = '2023-11-24_04-07-11' #don't create new dir
 log_dir = os.path.join(config.LOGS_DIR, new_dir)
 
 # get logger and callbacks
@@ -138,11 +130,10 @@ trainer_cfg = {
     # "precision": "16-mixed",
     "max_epochs": config.MAX_EPOCHS,
     "log_every_n_steps": 100,
-    "gradient_clip_val": 2.0,
+    "gradient_clip_val": 1.0,
     "check_val_every_n_epoch": 1,
     "callbacks": [model_ckpt, grad_accum],
     "default_root_dir": config.DEFAULT_ROOT_DIR,
-    # "accumulate_grad_batches": 2,
 }
 trainer = L.Trainer(**trainer_cfg)
 

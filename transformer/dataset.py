@@ -4,11 +4,12 @@ from PIL import Image
 
 import torch
 from torch.utils.data import Dataset
-from torchtext.vocab import build_vocab_from_iterator
 
 import nltk
 from nltk import word_tokenize
 nltk.download('punkt', quiet=True)
+
+from vocab import Vocab
 
 class COCODataset(Dataset):
     def __init__(
@@ -22,8 +23,6 @@ class COCODataset(Dataset):
         vocab=None,
         max_sent_size=20,
         remove_idx=True,
-        vocab_max_tokens=20_000,
-        vocab_min_freq=2,
         return_all_captions=False,
     ):
         self.root = root
@@ -31,6 +30,8 @@ class COCODataset(Dataset):
         self.image_transform = image_transform
         self.vocab = vocab
         self.max_sent_size = max_sent_size
+        self.take_first = take_first
+        self.remove_idx = remove_idx
         self.return_all_captions = return_all_captions
         
         data = json.load(open(annotation_path))
@@ -47,8 +48,6 @@ class COCODataset(Dataset):
             self.df = self.df.sample(frac=1)
         
         self.df['caption_list'] = self.df['caption'].str.lower().apply(word_tokenize)
-        if self.vocab is None:
-            self.build_vocab(vocab_max_tokens, vocab_min_freq)
         
         idx = []
         for i in self.df.index:
@@ -109,22 +108,16 @@ class COCODataset(Dataset):
         caption = self.vocab.lookup_indices(caption)
         return torch.tensor(caption)
     
-    
-    def build_vocab(self, max_tokens=20_000, min_freq=2):
-        def yield_tokens(df):
-            for i in df.index:
-                captions = df['caption_list'][i]
-                yield captions
-
-        self.vocab_specials = ['<unk>', '<pad>', '<sos>', '<eos>']
-
-        self.vocab = build_vocab_from_iterator(
-            yield_tokens(self.df),
+    def build_vocab(self, max_tokens=None, min_freq=2, load_from_file=None):
+        self.vocab = Vocab(
+            root='./transformer/vocab',
             min_freq=min_freq,
-            specials=self.vocab_specials,
             max_tokens=max_tokens,
+            file_name=f"take_first={self.take_first}_max_length={self.max_sent_size}_remove_idx={self.remove_idx}",
+            load_from_file=load_from_file,
         )
-        self.vocab.set_default_index(self.vocab_specials.index('<unk>'))
+        self.vocab.add_captions(self.df['caption_list'].tolist())
+        self.vocab.save_vocab()
 
         
 # collate batch function if you set return_all_captions=True in dataset
