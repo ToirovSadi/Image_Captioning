@@ -52,7 +52,7 @@ with st.sidebar.subheader("Model Info"):
     st.write('\n'.join(info_text))
 
 ## Load the model
-# @st.cache_resource(ttl=24*3600, max_entries=1)
+@st.cache_resource(ttl=24*3600, max_entries=1)
 def load_model(model_name, info):
     from src.models.transformer.model import Transformer
     from src.models.seq2seq.model import Seq2Seq
