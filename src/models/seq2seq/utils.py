@@ -177,7 +177,7 @@ def beam_search(
                 continue
             
             # add <eos>, it's will be removed in node.word_id
-            decoder_input = torch.cat((node.word_id, torch.tensor([[eos_idx]])), dim=1)
+            decoder_input = torch.cat((node.word_id, torch.tensor([[eos_idx]], device=device)), dim=1)
             preds = model.decoder(img_feat, decoder_input)
             preds = torch.log_softmax(preds[:, -1, :], dim=1)
             # preds.shape: [1, output_dim]
