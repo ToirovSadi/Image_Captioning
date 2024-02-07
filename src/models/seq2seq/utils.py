@@ -13,6 +13,15 @@ from src.data.dataset import COCODataset
 from src.data.dataset import collate_batch
 
 def remove_specials(x):
+    """
+    Remove special tokens from a list of tokens.
+
+    Args:
+        x (list): List of tokens.
+
+    Returns:
+        list: List of tokens with special tokens removed.
+    """
     specials = ['<unk>', '<sos>', '<eos>', '<pad>']
     for sp in specials:
         while sp in x:
@@ -20,21 +29,48 @@ def remove_specials(x):
     return x
 
 def get_config(file_name):
+    """
+    Read and parse a YAML configuration file.
+
+    Args:
+        file_name (str): Path to the YAML configuration file.
+
+    Returns:
+        dict: Parsed configuration data.
+    """
     print("reading config file:", file_name)
     with open(file_name) as f:
         data = yaml.safe_load(f)
     return data
 
 def post_proress(caption, detokenize=True):
+    """
+    Perform post-processing on a caption.
+
+    Args:
+        caption (list): List of tokens representing the caption.
+        detokenize (bool, optional): Whether to detokenize the caption. Defaults to True.
+
+    Returns:
+        str: Processed caption.
+    """
     # remove specials
     caption = remove_specials(caption)
     
     # detokenize (join the tokens)
     return TreebankWordDetokenizer().detokenize(caption)
 
-
 def get_transforms(img=None, train=True):
-    
+    """
+    Get the image transformations for preprocessing.
+
+    Args:
+        img (PIL.Image, optional): Input image. Defaults to None.
+        train (bool, optional): Whether the transformations are for training or testing. Defaults to True.
+
+    Returns:
+        torchvision.transforms.Compose: Composed image transformations.
+    """
     # ImageNet mean and std
     mean = [0.485, 0.456, 0.406]
     std = [0.229, 0.224, 0.225]
@@ -53,6 +89,15 @@ def get_transforms(img=None, train=True):
     return transform
 
 def get_datasets(config):
+    """
+    Get the training and validation datasets.
+
+    Args:
+        config (dict): Configuration data.
+
+    Returns:
+        tuple: Tuple containing the training and validation datasets.
+    """
     ## Get the Datasets
     train_dataset = COCODataset(
         root=config['datasets']['train_dataset'],
@@ -87,6 +132,17 @@ def get_datasets(config):
     return train_dataset, val_dataset
 
 def get_dataloaders(train_dataset, val_dataset, config):
+    """
+    Get the training and validation dataloaders.
+
+    Args:
+        train_dataset (COCODataset): Training dataset.
+        val_dataset (COCODataset): Validation dataset.
+        config (dict): Configuration data.
+
+    Returns:
+        tuple: Tuple containing the training and validation dataloaders.
+    """
     ## Get the DataLoaders
     train_dataloader = DataLoader(
         train_dataset,
@@ -105,6 +161,16 @@ def get_dataloaders(train_dataset, val_dataset, config):
     return train_dataloader, val_dataloader
 
 def jaccard_index(a: list[str], b: list[str]) -> float:
+    """
+    Calculate the Jaccard index between two lists of strings.
+
+    Args:
+        a (list): First list of strings.
+        b (list): Second list of strings.
+
+    Returns:
+        float: Jaccard index.
+    """
     a = set(a)
     b = set(b)
     
@@ -133,6 +199,22 @@ def beam_search(
     max_candidates_coef=3,
     jaccard_threshold=0.5,
 ):
+    """
+    Perform beam search to generate captions for an input image.
+
+    Args:
+        src (torch.Tensor): Input image.
+        model: Model used for caption generation.
+        vocab (Vocab, optional): Vocabulary object. Defaults to None.
+        beam_width (int, optional): Width of the beam. Defaults to 5.
+        num_candidates (int, optional): Number of candidate captions to generate. Defaults to 1.
+        max_steps (int, optional): Maximum number of steps for beam search. Defaults to 2000.
+        max_candidates_coef (int, optional): Maximum number of candidates to consider. Defaults to 3.
+        jaccard_threshold (float, optional): Jaccard index threshold for filtering duplicate captions. Defaults to 0.5.
+
+    Returns:
+        list: List of generated captions.
+    """
     if vocab is None:
         if hasattr(model, "vocab"):
             vocab = model.vocab

@@ -11,6 +11,14 @@ from .utils import remove_specials
 ### Encoder
 class Encoder(nn.Module):
     def __init__(self, input_channels, hidden_dim, dropout=0.5):
+        """
+        Encoder module of the Transformer model.
+        
+        Args:
+        - input_channels: The number of input channels of the image.
+        - hidden_dim: The dimension of the hidden layer.
+        - dropout: The dropout rate.
+        """
         super(Encoder, self).__init__()
         
         self.model = models.resnet101(weights='IMAGENET1K_V2', progress=False)
@@ -20,6 +28,15 @@ class Encoder(nn.Module):
         self.freeze()
         
     def forward(self, x):
+        """
+        Forward pass of the Encoder module.
+        
+        Args:
+        - x: The input image tensor.
+        
+        Returns:
+        - x: The encoded image tensor.
+        """
         x = self.dropout(self.model(x)).unsqueeze(1)
         # x.shape: [batch_size, 1, output_dim]
         return x
@@ -31,15 +48,30 @@ class Encoder(nn.Module):
             params.requires_grad = b
     
     def freeze(self):
+        """
+        Freeze the parameters of the Encoder module.
+        """
         self._req_grad(False)
     
     def unfreeze(self):
+        """
+        Unfreeze the parameters of the Encoder module.
+        """
         self._req_grad(True)
 
         
 ### Attention
 class MultiHeadAttention(nn.Module):
     def __init__(self, hidden_dim, heads, dropout, device):
+        """
+        Multi-Head Attention module of the Transformer model.
+        
+        Args:
+        - hidden_dim: The dimension of the hidden layer.
+        - heads: The number of attention heads.
+        - dropout: The dropout rate.
+        - device: The device to run the module on.
+        """
         super(MultiHeadAttention, self).__init__()
         
         assert hidden_dim % heads == 0
@@ -57,6 +89,20 @@ class MultiHeadAttention(nn.Module):
         
         
     def forward(self, query, key, value, mask=None, return_attention=False):
+        """
+        Forward pass of the Multi-Head Attention module.
+        
+        Args:
+        - query: The query tensor.
+        - key: The key tensor.
+        - value: The value tensor.
+        - mask: The mask tensor to apply to the attention scores.
+        - return_attention: Whether to return the attention scores.
+        
+        Returns:
+        - x: The output tensor.
+        - attention: The attention scores (if return_attention is True).
+        """
         # (key, value, query).shape: [batch_size, max_sent_size, hidden_dim]
         
         batch_size, max_sent_size, hidden_dim = key.shape
@@ -84,6 +130,16 @@ class MultiHeadAttention(nn.Module):
 ### Decoder
 class DecoderBlock(nn.Module):
     def __init__(self, hidden_dim, heads, ff_expantion, dropout, device):
+        """
+        Decoder Block module of the Transformer model.
+        
+        Args:
+        - hidden_dim: The dimension of the hidden layer.
+        - heads: The number of attention heads.
+        - ff_expantion: The expansion factor for the feed-forward layer.
+        - dropout: The dropout rate.
+        - device: The device to run the module on.
+        """
         super(DecoderBlock, self).__init__()
         
         self.self_attention = MultiHeadAttention(hidden_dim, heads, dropout, device)
@@ -104,6 +160,20 @@ class DecoderBlock(nn.Module):
         
         
     def forward(self, x, enc_out, src_mask=None, trg_mask=None, return_attention=False):
+        """
+        Forward pass of the Decoder Block module.
+        
+        Args:
+        - x: The input tensor.
+        - enc_out: The output tensor from the Encoder module.
+        - src_mask: The mask tensor for the source sequence.
+        - trg_mask: The mask tensor for the target sequence.
+        - return_attention: Whether to return the attention scores.
+        
+        Returns:
+        - x: The output tensor.
+        - attention: The attention scores (if return_attention is True).
+        """
         # x.shape: [batch_size, max_sent_size]
         # enc_out.shape: [batch_size, max_sent_size, hidden_dim]
         # src_mask: [batch_size, max_sent_size]
@@ -139,6 +209,20 @@ class Decoder(nn.Module):
         max_size,
         vocab
     ):
+        """
+        Decoder module of the Transformer model.
+        
+        Args:
+        - output_dim: The dimension of the output.
+        - hidden_dim: The dimension of the hidden layer.
+        - num_layers: The number of DecoderBlock layers.
+        - heads: The number of attention heads.
+        - ff_expantion: The expansion factor for the feed-forward layer.
+        - dropout: The dropout rate.
+        - device: The device to run the module on.
+        - max_size: The maximum size of the sequence.
+        - vocab: The vocabulary dictionary.
+        """
         super(Decoder, self).__init__()
         self.padding_idx = vocab['<pad>']
         self.token_embedding = nn.Embedding(output_dim, hidden_dim, padding_idx=self.padding_idx)
@@ -160,6 +244,20 @@ class Decoder(nn.Module):
         self.scale = torch.sqrt(torch.tensor(hidden_dim, device=self.device))
         
     def forward(self, x, enc_out, src_mask=None, trg_mask=None, return_attention=False):
+        """
+        Forward pass of the Decoder module.
+        
+        Args:
+        - x: The input tensor.
+        - enc_out: The output tensor from the Encoder module.
+        - src_mask: The mask tensor for the source sequence.
+        - trg_mask: The mask tensor for the target sequence.
+        - return_attention: Whether to return the attention scores.
+        
+        Returns:
+        - x: The output tensor.
+        - attention: The attention scores (if return_attention is True).
+        """
         # x.shape: [batch_size, max_sent_size]
         # src_mask.shape: [batch_size, max_sent_size]
         # trg_mask.shape: [batch_size, max_sent_size]
@@ -193,6 +291,14 @@ class Transformer(L.LightningModule):
         config,
         device='cpu',
     ):
+        """
+        Transformer model for image captioning.
+        
+        Args:
+        - vocab: The vocabulary dictionary.
+        - config: The configuration dictionary.
+        - device: The device to run the model on.
+        """
         super(Transformer, self).__init__()
         self.save_hyperparameters()
         
@@ -235,6 +341,15 @@ class Transformer(L.LightningModule):
         )
 
     def mask_trg(self, x):
+        """
+        Generate the target mask for the given sequence.
+        
+        Args:
+        - x: The input sequence tensor.
+        
+        Returns:
+        - trg_pad_mask: The target mask tensor.
+        """
         # x.shape: [batch_size, max_sent_size]
         trg_pad_mask = (x != self.decoder.padding_idx).unsqueeze(1).unsqueeze(2)
         max_size = x.shape[1]
@@ -242,6 +357,16 @@ class Transformer(L.LightningModule):
         return trg_pad_mask & mask
         
     def forward(self, img, captions):
+        """
+        Forward pass of the Transformer model.
+        
+        Args:
+        - img: The input image tensor.
+        - captions: The input caption tensor.
+        
+        Returns:
+        - outputs: The output tensor.
+        """
         captions = captions[:, :-1]
         # image.shape: [batch_size, C, H, W]
         # captions.shape: [batch_size, max_sent_size-1]
@@ -254,6 +379,16 @@ class Transformer(L.LightningModule):
         return outputs
 
     def training_step(self, batch, batch_idx):
+        """
+        Training step of the Transformer model.
+        
+        Args:
+        - batch: The input batch.
+        - batch_idx: The index of the current batch.
+        
+        Returns:
+        - loss: The computed loss value.
+        """
         img, caption = batch
         
         preds = self.forward(img, caption)
@@ -308,7 +443,8 @@ class Transformer(L.LightningModule):
         # res.shape: [batch_size, 1]
         
         for i in range(max_size):
-            preds = self.decoder(res, img_feat)
+            captions_mask = self.mask_trg(res)
+            preds = self.decoder(res, img_feat, trg_mask=captions_mask)
             # preds.shape: [batch_size, max_sent_size, output_dim]
             
             preds = preds.argmax(-1)[:, -1:]

@@ -1,11 +1,14 @@
+"""
+This script trains a Transformer model for image captioning using the specified configuration file.
+"""
+
 ## import all libraries
 import torch
-
 import math
 import lightning as L
-
 import sys
 import os
+
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 print("Root Dir:", root_dir)
 sys.path.insert(0, root_dir)
@@ -23,7 +26,7 @@ config = get_config(args.config_file)
 train_dataset, val_dataset = get_datasets(config)
 train_dataloader, val_dataloader = get_dataloaders(train_dataset, val_dataset, config)
 
-## Make training determenistic
+## Make training deterministic
 L.seed_everything(config['seed'])
 torch.set_float32_matmul_precision("medium")
 
@@ -42,7 +45,6 @@ else:
         device=device
     )
 
-    
 log_dir = os.path.join(config['logs_dir'], config['model']['model_name'])
 
 # get logger and callbacks
@@ -54,14 +56,6 @@ model_ckpt = L.pytorch.callbacks.ModelCheckpoint(
     every_n_epochs=1,
     save_top_k=-1,
 )
-
-# ACCUMULATE_MAP = {
-#     0: math.ceil(32 / config['train']['batch_size']),
-#     5: math.ceil(128 / config['train']['batch_size']),
-#     10: math.ceil(512 / config['train']['batch_size']),
-#     15: math.ceil(1024 / config['train']['batch_size']),
-# }
-# grad_accum = L.pytorch.callbacks.GradientAccumulationScheduler(scheduling=ACCUMULATE_MAP)
 
 trainer_cfg = {
     "accelerator": "gpu",

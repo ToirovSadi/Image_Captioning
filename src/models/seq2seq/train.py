@@ -1,11 +1,13 @@
+"""
+This script trains a Seq2Seq model for image captioning using the specified configuration file.
+"""
+
 ## import all libraries
 import torch
-
-import math
 import lightning as L
-
 import sys
 import os
+
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 print("Root Dir:", root_dir)
 sys.path.insert(0, root_dir)
@@ -23,7 +25,7 @@ config = get_config(args.config_file)
 train_dataset, val_dataset = get_datasets(config)
 train_dataloader, val_dataloader = get_dataloaders(train_dataset, val_dataset, config)
 
-## Make training determenistic
+## Make training deterministic
 L.seed_everything(config['seed'])
 torch.set_float32_matmul_precision("medium")
 
@@ -54,8 +56,7 @@ model_ckpt = L.pytorch.callbacks.ModelCheckpoint(
     mode='max',
     dirpath=log_dir,
     every_n_epochs=1,
-    save_top_k=1,
-    save_last=True, # if we want to continue training
+    save_top_k=-1,
 )
 
 trainer_cfg = {

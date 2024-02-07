@@ -1,5 +1,9 @@
-# this is Streamlit app, for you to test the models
+"""
+This is a Streamlit app for testing image captioning models.
+"""
 
+
+# Import necessary libraries
 import streamlit as st
 import lightning as L
 import json
@@ -18,15 +22,20 @@ st.markdown("#### This is a simple Image Captioning model, which takes an image 
 
 @st.cache_data(ttl=24*3600, max_entries=1)
 def load_info():
+    """
+    Loads the model information from a JSON file.
+    """
     with open("model_info.json", "r") as f:
         info = json.load(f)
     return info
+
 info = load_info()
 
 # Sidebar
 st.sidebar.title('Models')
 model_name = st.sidebar.selectbox('Select Model', ['Transformer', 'Seq2Seq', 'Seq2Seq_1'])
 num_captions = st.sidebar.slider('Select Number of Captions', 1, 10, 3)
+
 with st.sidebar.subheader("Model Info"):
     info_text = ['#### Model Parameters:']
     info_text.append(f"- max_len: {info[model_name.lower()]['max_len']}")
@@ -54,6 +63,9 @@ with st.sidebar.subheader("Model Info"):
 ## Load the model
 @st.cache_resource(ttl=24*3600, max_entries=1)
 def load_model(model_name, info):
+    """
+    Loads the specified model from a file or downloads it if not available locally.
+    """
     from src.models.transformer.model import Transformer
     from src.models.seq2seq.model import Seq2Seq
 
@@ -61,9 +73,10 @@ def load_model(model_name, info):
     file_name = os.path.join('models',  info['file_name'])
     
     if not os.path.exists(file_name):
-        print("link:", link)
+        # Download the model if not available locally
         gdown.download(link, file_name, quiet=False, fuzzy=True)
     
+    # Load the model from the file
     model = (Transformer if model_name == 'Transformer' else Seq2Seq).load_from_checkpoint(file_name, map_location='cpu', device='cpu')
     
     model.to('cpu')
@@ -81,6 +94,7 @@ with col1:
     ## Image Upload
     uploaded_file = st.file_uploader("Choose an image...", type="jpg")
     if uploaded_file is not None:
+        # Display the uploaded image
         st.image(uploaded_file, caption='Uploaded Image.', use_column_width=True)
         img = Image.open(uploaded_file)
     

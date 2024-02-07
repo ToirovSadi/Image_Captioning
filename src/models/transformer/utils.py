@@ -13,27 +13,67 @@ from src.data.dataset import COCODataset
 from src.data.dataset import collate_batch
 
 def remove_specials(x, specials=['<unk>', '<sos>', '<eos>', '<pad>']):
+    """
+    Remove special tokens from a list of tokens.
+
+    Args:
+        x (list): List of tokens.
+        specials (list, optional): List of special tokens to remove. Defaults to ['<unk>', '<sos>', '<eos>', '<pad>'].
+
+    Returns:
+        list: List of tokens with special tokens removed.
+    """
     for sp in specials:
         while sp in x:
             x.remove(sp)
     return x
 
 def get_config(file_name):
+    """
+    Read and parse a YAML configuration file.
+
+    Args:
+        file_name (str): Path to the YAML configuration file.
+
+    Returns:
+        dict: Parsed configuration data.
+    """
     print("reading config file:", file_name)
     with open(file_name) as f:
         data = yaml.safe_load(f)
     return data
 
 def post_proress(caption, detokenize=True):
+    """
+    Perform post-processing on a caption.
+
+    Args:
+        caption (list): List of tokens representing the caption.
+        detokenize (bool, optional): Whether to detokenize the caption. Defaults to True.
+
+    Returns:
+        str: Processed caption.
+    """
     # remove specials
     caption = remove_specials(caption)
     
     # detokenize (join the tokens)
-    return TreebankWordDetokenizer().detokenize(caption)
-
+    if detokenize:
+        return TreebankWordDetokenizer().detokenize(caption)
+    else:
+        return caption
 
 def get_transforms(img=None, train=True):
-    
+    """
+    Get the image transformations for training or testing.
+
+    Args:
+        img (PIL.Image, optional): Input image. Defaults to None.
+        train (bool, optional): Whether the transformations are for training or testing. Defaults to True.
+
+    Returns:
+        torchvision.transforms.Compose: Composed image transformations.
+    """
     # ImageNet mean and std
     mean = [0.485, 0.456, 0.406]
     std = [0.229, 0.224, 0.225]
@@ -59,21 +99,28 @@ def get_transforms(img=None, train=True):
             transforms.Normalize(mean=mean, std=std),
         ])
     
-    
     if img is not None:
         return transform(img)
     
     return transform
 
 def get_datasets(config):
+    """
+    Get the training and validation datasets.
+
+    Args:
+        config (dict): Configuration data.
+
+    Returns:
+        tuple: Tuple containing the training and validation datasets.
+    """
     ## Get the Datasets
     train_dataset = COCODataset(
         root=config['datasets']['train_dataset'],
         annotation_path=config['datasets']['train_caption'],
         train=True,
-        image_transform=get_transforms(train=True), # TODO
+        image_transform=get_transforms(train=True),
         remove_idx=True,
-        # take_first=100000, # TODO
         max_sent_size=config['max_sent_size'],
     )
     train_dataset.build_vocab(
@@ -91,7 +138,7 @@ def get_datasets(config):
         vocab=train_dataset.vocab,
         train=True,
         image_transform=get_transforms(train=False),
-        take_first=10_000, # TODO
+        take_first=10_000,
         remove_idx=False,
         return_all_captions=True,
         max_sent_size=config['max_sent_size'],
@@ -101,6 +148,17 @@ def get_datasets(config):
     return train_dataset, val_dataset
 
 def get_dataloaders(train_dataset, val_dataset, config):
+    """
+    Get the training and validation dataloaders.
+
+    Args:
+        train_dataset (COCODataset): Training dataset.
+        val_dataset (COCODataset): Validation dataset.
+        config (dict): Configuration data.
+
+    Returns:
+        tuple: Tuple containing the training and validation dataloaders.
+    """
     ## Get the DataLoaders
     train_dataloader = DataLoader(
         train_dataset,
@@ -119,6 +177,16 @@ def get_dataloaders(train_dataset, val_dataset, config):
     return train_dataloader, val_dataloader
 
 def jaccard_index(a: list[str], b: list[str]) -> float:
+    """
+    Calculate the Jaccard index between two lists of strings.
+
+    Args:
+        a (list): First list of strings.
+        b (list): Second list of strings.
+
+    Returns:
+        float: Jaccard index.
+    """
     a = set(a)
     b = set(b)
     
@@ -131,7 +199,16 @@ class BeamSearchNode:
         self.log_prob = log_prob
         self.length = length
         
-    def eval(self, alpha=0.75): # TODO
+    def eval(self, alpha=0.75):
+        """
+        Calculate the evaluation score of the node.
+
+        Args:
+            alpha (float, optional): Alpha value for length normalization. Defaults to 0.75.
+
+        Returns:
+            float: Evaluation score.
+        """
         return self.log_prob / (self.length ** alpha)
     
     def __lt__(self, other):
@@ -147,6 +224,22 @@ def beam_search(
     max_candidates_coef=3,
     jaccard_threshold=0.8,
 ):
+    """
+    Perform beam search to generate captions for an image.
+
+    Args:
+        src: Input image.
+        model: Transformer model.
+        vocab (Vocab, optional): Vocabulary object. Defaults to None.
+        beam_width (int, optional): Beam width. Defaults to 5.
+        num_candidates (int, optional): Number of candidate captions to generate. Defaults to 3.
+        max_steps (int, optional): Maximum number of steps for beam search. Defaults to 2000.
+        max_candidates_coef (int, optional): Maximum number of candidates to consider. Defaults to 3.
+        jaccard_threshold (float, optional): Jaccard index threshold for filtering duplicate captions. Defaults to 0.8.
+
+    Returns:
+        list: List of generated captions.
+    """
     if vocab is None:
         if hasattr(model, "vocab"):
             vocab = model.vocab
@@ -194,11 +287,8 @@ def beam_search(
             trg_mask = model.mask_trg(node.word_id)
             preds = model.decoder(node.word_id, img_feat, trg_mask=trg_mask)
             preds = torch.log_softmax(preds[:, -1, :], dim=1)
-            # preds.shape: [1, output_dim]
             topk, indices = torch.topk(preds, beam_width)
-            # topk.shape: [1, beam_width]
             
-            # add these topk to the queue
             for i in range(beam_width):
                 next_decoder_in = indices[0][i].view(1, -1)
                 next_decoder_in = torch.cat((node.word_id, next_decoder_in), dim=1)
@@ -222,7 +312,6 @@ def beam_search(
         ans = remove_specials(ans)
         res.append((score, ans))
     
-    # sort and take first num_candidates
     candidates = sorted(res, key=lambda x: x[0])
     
     result = []

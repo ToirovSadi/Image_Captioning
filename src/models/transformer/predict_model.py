@@ -1,5 +1,4 @@
 from PIL import Image
-import torch
 
 import sys
 import os
@@ -10,9 +9,33 @@ from .model import Transformer
 from .utils import get_transforms, post_proress, beam_search
 
 def load_model(checkpoint, device):
+    """
+    Load the Transformer model from a checkpoint file.
+
+    Args:
+        checkpoint (str): Path to the checkpoint file.
+        device (str): Device to load the model on.
+
+    Returns:
+        Transformer: Loaded Transformer model.
+    """
     return Transformer.load_from_checkpoint(checkpoint, map_location=device, device=device)
 
 def predict(model, img, num_captions=1, device='cpu', postprocess=True, **kwds):
+    """
+    Generate captions for an image using the Transformer model.
+
+    Args:
+        model (Transformer or str): The Transformer model or path to the checkpoint file.
+        img (str or PIL.Image.Image): Path to the image file or PIL image object.
+        num_captions (int): Number of captions to generate.
+        device (str): Device to run the model on.
+        postprocess (bool): Whether to post-process the generated captions.
+        **kwds: Additional keyword arguments.
+
+    Returns:
+        list: List of generated captions.
+    """
     if type(model) is str:
         model = load_model(model, device)
         model.decoder.device = device
@@ -27,10 +50,8 @@ def predict(model, img, num_captions=1, device='cpu', postprocess=True, **kwds):
         src=img,
         model=model,
         vocab=model.vocab,
-        beam_width=5,
         num_candidates=num_captions,
-        max_steps=2000,
-        jaccard_threshold=0.5,
+        **kwds,
     )
     
     if postprocess:
