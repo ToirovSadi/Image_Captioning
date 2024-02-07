@@ -1,5 +1,5 @@
 # Link to the Models to download
 ## Models
-- [seq2seq](https://drive.google.com/file/d/1ivIzUj29OeaGYG_CHG73gydTyBF_u1gZ/view?usp=drive_link)
-- [transformer](https://drive.google.com/file/d/1zAL3S8P3Fi9n5QdPLXcwx-QuVmBux-Ny/view?usp=drive_link)
-- [transformer_small](https://drive.google.com/file/d/1G-qZAtzi9MCHc41o4Rcuu5e1dLgPtNXC/view?usp=drive_link)
+- [seq2seq](https://drive.google.com/file/d/1KTv8H1AOo3D0TO4nKOH9OSf3BV_lDR7q/view?usp=drive_link)
+- [seq2seq_1](https://drive.google.com/file/d/1osGgiTDGpbMcgiknbRiRJPdiDCAHua5j/view?usp=drive_link)
+- [transformer](https://drive.google.com/file/d/19x8JYgKFWHtPcZ7FS7_VBBiWZGRlhEQB/view?usp=drive_link)
