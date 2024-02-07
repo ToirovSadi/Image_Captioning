@@ -2,7 +2,6 @@
 
 import streamlit as st
 import lightning as L
-import torch
 import json
 import gdown
 import os
@@ -26,7 +25,7 @@ info = load_info()
 
 # Sidebar
 st.sidebar.title('Models')
-model_name = st.sidebar.selectbox('Select Model', ['Transformer', 'Seq2Seq'])
+model_name = st.sidebar.selectbox('Select Model', ['Transformer', 'Seq2Seq', 'Seq2Seq_1'])
 num_captions = st.sidebar.slider('Select Number of Captions', 1, 10, 3)
 with st.sidebar.subheader("Model Info"):
     info_text = ['#### Model Parameters:']
@@ -55,12 +54,9 @@ with st.sidebar.subheader("Model Info"):
 ## Load the model
 # @st.cache_resource(ttl=24*3600, max_entries=1)
 def load_model(model_name, info):
-    # from src.models.transformer.model import Transformer
-    # from src.models.seq2seq.model import Seq2Seq
-    
-    from transformer.model import Transformer
-    from seq2seq.model import Seq2Seq
-    
+    from src.models.transformer.model import Transformer
+    from src.models.seq2seq.model import Seq2Seq
+
     link = info['model_link']
     file_name = os.path.join('models',  info['file_name'])
     
@@ -69,7 +65,6 @@ def load_model(model_name, info):
         gdown.download(link, file_name, quiet=False, fuzzy=True)
     
     model = (Transformer if model_name == 'Transformer' else Seq2Seq).load_from_checkpoint(file_name, map_location='cpu', device='cpu')
-    # model = torch.load(file_name, map_location='cpu')
     
     model.to('cpu')
     if hasattr(model, 'encoder') and hasattr(model.encoder, 'device'):
