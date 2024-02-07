@@ -1,0 +1,33 @@
+# General parameters
+seed: 42
+max_sent_size: 32
+min_freq: 5 # for building the vocab
+
+train:
+  batch_size: 32
+  num_workers: 8
+  max_epochs: 10
+  max_steps: 250_000
+  learning_rate: 3.e-4
+  label_smoothing: 0
+  weight_decay: 0.01
+
+
+model_resume: False
+pretrain_path: False # None
+logs_dir: './src/models/seq2seq/logs'
+default_root_dir: './src/models/seq2seq/'
+
+model:
+  model_name: 'exp3_model-weight_decay=0.01'
+  input_dim: 3 # input channels
+  embed_dim: 512
+  hidden_dim: 512
+  dropout: 0.5
+  num_layers: 1 # layers of LSTM
+
+datasets:
+  train_dataset: '/datasets/coco/train2014/'
+  train_caption: '/datasets/coco/annotations/captions_train2014.json'
+  val_dataset: '/datasets/coco/val2014/'
+  val_caption: '/datasets/coco/annotations/captions_val2014.json'
